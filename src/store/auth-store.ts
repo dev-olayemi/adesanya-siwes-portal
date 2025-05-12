@@ -1,8 +1,14 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createClient } from '@supabase/supabase-js';
 
 export type UserRole = 'student' | 'supervisor' | 'coordinator' | null;
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface User {
   id: string;
@@ -17,9 +23,11 @@ export interface User {
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  supabaseUser: any;
   login: (user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
+  setSupabaseUser: (user: any) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -27,14 +35,52 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
+      supabaseUser: null,
       login: (user) => set({ user, isAuthenticated: true }),
-      logout: () => set({ user: null, isAuthenticated: false }),
+      logout: async () => {
+        await supabase.auth.signOut();
+        set({ user: null, isAuthenticated: false, supabaseUser: null });
+      },
       updateUser: (userData) => set((state) => ({
         user: state.user ? { ...state.user, ...userData } : null,
       })),
+      setSupabaseUser: (supabaseUser) => set({ supabaseUser }),
     }),
     {
       name: 'auth-storage',
     }
   )
 );
+
+// Add a listener for auth changes
+supabase.auth.onAuthStateChange((event, session) => {
+  const authStore = useAuthStore.getState();
+  
+  if (event === 'SIGNED_IN' && session?.user) {
+    // Get user profile from database
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          // Set both the supabase user and our custom user object
+          authStore.setSupabaseUser(session.user);
+          authStore.login({
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            role: data.role as UserRole,
+            organizationId: data.organization_id,
+            paymentStatus: data.payment_status,
+            studentId: data.student_id,
+          });
+        } else {
+          console.error('Error fetching user profile:', error);
+        }
+      });
+  } else if (event === 'SIGNED_OUT') {
+    authStore.logout();
+  }
+});
