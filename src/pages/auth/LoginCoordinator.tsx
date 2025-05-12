@@ -4,8 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuthStore } from "@/store/auth-store";
-import { mockUsers } from "@/lib/mock-data";
+import { useAuthStore, supabase } from "@/store/auth-store";
 import { toast } from "sonner";
 
 const LoginCoordinator = () => {
@@ -13,27 +12,29 @@ const LoginCoordinator = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuthStore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API request
-    setTimeout(() => {
-      const user = mockUsers.find(
-        (u) => u.email === email && u.role === "coordinator"
-      );
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      if (user) {
-        login(user);
-        toast.success("Login successful!");
-        navigate("/coordinator/dashboard");
+      if (error) {
+        toast.error(error.message);
       } else {
-        toast.error("Invalid email or password");
+        toast.success("Login successful!");
+        // Navigation will be handled by the auth listener in auth-store.ts
       }
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+      console.error(error);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

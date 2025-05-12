@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/store/auth-store";
 import { toast } from "sonner";
 
 const SignupStudent = () => {
@@ -22,7 +23,7 @@ const SignupStudent = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
@@ -32,12 +33,46 @@ const SignupStudent = () => {
     
     setIsLoading(true);
 
-    // Simulate API request
-    setTimeout(() => {
-      toast.success("Account created successfully! You can now login.");
-      navigate("/auth/login/student");
+    try {
+      // First, create the auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (authError) {
+        toast.error(authError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (authData.user) {
+        // Then, create the user profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: formData.email,
+            name: formData.name,
+            student_id: formData.studentId,
+            role: 'student',
+            payment_status: 'pending'
+          });
+
+        if (profileError) {
+          toast.error("Failed to create user profile");
+          console.error(profileError);
+        } else {
+          toast.success("Account created successfully! You can now login.");
+          navigate("/auth/login/student");
+        }
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+      console.error(error);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
