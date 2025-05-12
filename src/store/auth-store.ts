@@ -5,9 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 
 export type UserRole = 'student' | 'supervisor' | 'coordinator' | null;
 
-// Check for environment variables and provide fallbacks
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Check for environment variables with Next.js and Vite naming conventions
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Create Supabase client only if URL and key are available
 export const supabase = supabaseUrl && supabaseKey 

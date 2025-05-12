@@ -18,6 +18,12 @@ const LoginStudent = () => {
     setIsLoading(true);
 
     try {
+      if (!supabase) {
+        toast.error("Supabase is not configured. Please set up your environment variables.");
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -112,6 +118,18 @@ const LoginStudent = () => {
             </Button>
           </div>
         </form>
+
+        {!supabase && (
+          <div className="mt-6 p-4 bg-red-50 rounded-md border border-red-200 text-red-700">
+            <p className="text-sm">
+              <strong>Error:</strong> Supabase is not configured. Set up your environment variables:
+              <br />
+              VITE_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL
+              <br />
+              VITE_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY
+            </p>
+          </div>
+        )}
 
         <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-600">
